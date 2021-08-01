@@ -4,6 +4,9 @@ Created on Sun May  3 10:33:36 2020
 
 Scrape gen con text. Each talk will be saved to its own file.
 
+1) Getting a missing title error 2020/10/15cook
+2) Fix id num so it resets every conference
+
 @author: dylan
 """
 
@@ -82,7 +85,7 @@ print('back to work')
     # Grab summary
     # Remove summary from full text
 id_num = 0
-for talk in talk_links[:2]:
+for talk in talk_links:
     
     # create ID number
     id_num += 1
@@ -91,19 +94,26 @@ for talk in talk_links[:2]:
     req = Request(talk_path, headers={'User-Agent': 'Mozilla/5.0'})
     url = urlopen(req).read()
     bs = BeautifulSoup(url, "lxml")
+    # remove footnotes from talk
+    footnote_list = bs.find_all("sup",{"class":"marker"})
+    for f in footnote_list:
+        bs.find("sup",{"class":"marker"}).replace_with('')
     # grab text of talk and clean
     text = bs.find("div",{"class":"body-block"}).get_text()
-    text_clean = unicodedata.normalize("NFKD", text).rstrip().lstrip().replace(u'\ufeff','')
+    text_clean = text.encode("ascii","ignore")
+    text_clean = text_clean.decode()
     # grab summary and remove from text
     try:
         text_summary = bs.find("p",{"kicker":"kicker1"}).get_text()
+        text_summary = text_summary.encode("ascii","ignore")
+        text_summary = text_summary.decode()
         bs.find("p",{"kicker":"kicker1"}).replace_with('')
     except:
         text_summary = 'no summary found'
-    # remove footnotes from talk (use find and replace)
-    
     # get text title
     text_title = bs.find("h1",{"id":"title1"}).get_text()
+    text_title = text_title.encode("ascii","ignore")
+    text_title = text_title.decode()
     # get and clean text author
     text_author = bs.find("p",{"class":"author-name"}).get_text()
     text_author = text_author.lower().replace('by ','')
@@ -112,8 +122,12 @@ for talk in talk_links[:2]:
     text_author = text_author.lower().replace('elder ','')
     text_author = text_author.lower().replace('sister ','')
     text_author = text_author.lower().replace('bishop ','')
+    text_author = text_author.encode("ascii","ignore")
+    text_author = text_author.decode()
     # get text author title
     text_author_title = bs.find("p",{"class":"author-role"}).get_text()
+    text_author_title = text_author_title.encode("ascii","ignore")
+    text_author_title = text_author_title.decode()
 
     # create and write to text file
     file = open(save_path+talk['y']+'_'+talk['m']+'_'+str(id_num)+'.txt', 'w+')
