@@ -19,17 +19,30 @@ import unicodedata
 
 df = pd.DataFrame()
 save_path = 'C:/Users/dylan/Datasets/lds/genconftext/'
+root = 'https://www.churchofjesuschrist.org'
 
-#Make list of all conference sessions links
-conference_path = 'https://www.lds.org/general-conference/conferences?lang=eng'
+#Make list of all conference sessions links ----------------------------------
+conference_path = root + '/general-conference/conferences?lang=eng'
 s_req = Request(conference_path, headers={'User-Agent': 'Mozilla/5.0'})
 s_url = urlopen(s_req).read()
 s_bs = BeautifulSoup(s_url, "lxml")
-s_list = s_bs.find_all("a",{"class":"year-line__link"})
+s_list = s_bs.find_all("a",{"class":"portrait-NjqEA"})
 session_links = []
 for session in s_list:
     session_links.append(session['href'])
-session_links[:] = [x for x in session_links if x != ''] #Remove missing values from session_links
+session_links = session_links[:-3] #Remove useless links
+    #Find session links hidden in decade links
+decade_links = [x for x in session_links if len(x.split('/')[3])>4] #Find decade links
+session_links = [x for x in session_links if x not in decade_links] #Remove decade links from session_links
+new_sessions = []
+for decade in decade_links: #Loop through decade links and find sessions
+    d_req = Request(root + decade, headers={'User-Agent': 'Mozilla/5.0'})
+    d_url = urlopen(d_req).read()
+    d_bs = BeautifulSoup(d_url, "lxml")
+    d_list = d_bs.find_all("a",{"class":"portrait-NjqEA"})
+    for session in d_list:
+        new_sessions.append(session['href'])
+session_links.extend(new_sessions)#Add new session to session_links
 half = len(session_links)//2
 session_links_a = session_links[:half]
 session_links_b = session_links[half:]
@@ -41,15 +54,15 @@ for link in session_links_a:
     #For each session make list of talk links
     year = link.split('/')[2]
     month = link.split('/')[3][:2]
-    session_path = 'https://www.lds.org' + link
+    session_path = root + link
     t_req = Request(session_path, headers={'User-Agent': 'Mozilla/5.0'})
     t_url = urlopen(t_req).read()
     t_bs = BeautifulSoup(t_url, "lxml")
-    t_list = t_bs.find_all("a",{"class":"lumen-tile__link"})
+    t_list = t_bs.find_all("a",{"class":"item-3cCP7"})
     for talk in t_list:
         d = {'y':year,'m':month, 'l':talk['href']}
         talk_links.append(dict(d))
-    time.sleep(rand.randint(5,10))
+    time.sleep(rand.randint(5,15))
 
 print("sleeping...")
 time.sleep(120)
@@ -65,7 +78,7 @@ for link in session_links_b:
     t_req = Request(session_path, headers={'User-Agent': 'Mozilla/5.0'})
     t_url = urlopen(t_req).read()
     t_bs = BeautifulSoup(t_url, "lxml")
-    t_list = t_bs.find_all("a",{"class":"lumen-tile__link"})
+    t_list = t_bs.find_all("a",{"class":"item-3cCP7"})
     for talk in t_list:
         d = {'y':year,'m':month, 'l':talk['href']}
         talk_links.append(dict(d))
